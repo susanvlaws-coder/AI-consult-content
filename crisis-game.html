@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Pathwarden Crisis Simulator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #1a1a2e; /* Dark cyber theme background */
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .game-container {
+            background-color: #16213e;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.1); /* Subtle cyan glow */
+            max-width: 700px;
+            width: 100%;
+            border: 1px solid #0f3460;
+        }
+        h1 {
+            color: #fff;
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        #scenario-title {
+            text-align: center;
+            color: #4db8ff;
+            margin-bottom: 30px;
+            font-style: italic;
+            font-size: 1.2rem;
+            min-height: 1.4em; /* Prevent jumpiness when loading */
+        }
+        .time-stamp {
+            color: #4db8ff; /* Cyan color for time */
+            font-weight: bold;
+            margin-bottom: 20px;
+            display: block;
+            font-size: 1.1rem;
+        }
+        #story-text {
+            font-size: 1.2rem;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            min-height: 120px;
+        }
+        .choices {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        /* Standard Choice Button */
+        .choice-btn {
+            background-color: #0f3460;
+            color: #fff;
+            border: 1px solid #4db8ff;
+            padding: 15px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.05rem;
+            text-align: left;
+            transition: all 0.3s ease;
+        }
+        .choice-btn:hover {
+            background-color: #4db8ff;
+            color: #1a1a2e;
+            transform: translateX(10px);
+            box-shadow: 0 0 15px rgba(77, 184, 255, 0.4);
+        }
+        /* Restart Button (Distinct style) */
+        .restart-btn {
+            background-color: #2ecc71; /* Green for go/restart */
+            color: #1a1a2e;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+        }
+        .restart-btn:hover {
+            background-color: #27ae60;
+            box-shadow: 0 0 20px rgba(46, 204, 113, 0.6);
+        }
+        
+        /* Ending styles */
+        .ending-bad { color: #ff6b6b; font-weight: bold; display: block; margin-top: 20px; font-size: 1.3rem; border-top: 1px solid #333; padding-top: 20px;}
+        .ending-good { color: #2ecc71; font-weight: bold; display: block; margin-top: 20px; font-size: 1.3rem; border-top: 1px solid #333; padding-top: 20px;}
+        .cta-container { text-align: center; margin-top: 30px; font-size: 0.9rem; color: #888;}
+        .ending-link { color: #4db8ff; text-decoration: none; font-weight: bold;}
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <h1>The 24-Hour Crisis Simulator</h1>
+    <p id="scenario-title" class="subtitle"></p>
+    <span id="timeStamp" class="time-stamp"></span>
+    <div id="story-text"></div>
+    <div id="choices-container" class="choices"></div>
+</div>
+
+<script>
+    // ==========================================
+    // SCENARIO 1 DATA: Shadow AI
+    // ==========================================
+    const scenario1 = {
+        title: "Scenario 1: The Hyper-Growth Trap",
+        nodes: {
+            "start": {
+                time: "9:00 AM - Tuesday",
+                text: "You are the CEO. Your CMO reports that marketing leads are up 400% this week using a 'new AI workflow' to hyper-personalize outreach. They seem thrilled.",
+                choices: [
+                    { text: "Congratulate them and let the results roll in.", nextNodeId: "ignoreIt" },
+                    { text: "Call the CMO in. Ask exactly *how* it works and what data they are using.", nextNodeId: "askHow" }
+                ]
+            },
+            "ignoreIt": {
+                time: "Friday - 3 Days Later",
+                text: "Revenue is soaring. Then you get an angry call from your biggest client. They received a marketing email referencing sensitive private financial data they shared under NDA last year. The AI used it to 'personalize' the email.",
+                choices: [
+                    { text: "Apologize profusely and scramble to investigate.", nextNodeId: "badEndingReputation" }
+                ]
+            },
+            "askHow": {
+                time: "9:30 AM - Tuesday",
+                text: "The CMO admits: 'We signed up for a startup tool called HyperGrow-AI on the company card ($99/mo). We connected it to our Salesforce database so it could train on our customer data.'",
+                choices: [
+                    { text: "Yell: 'Disconnect that tool immediately!'", nextNodeId: "disconnectPanic" },
+                    { text: "Calmly ask: 'Did IT or Legal vet their security policies first?'", nextNodeId: "askVetting" }
+                ]
+            },
+            "disconnectPanic": {
+                time: "10:00 AM - Tuesday",
+                text: "You sever the connection. You then check HyperGrow-AI's Terms of Service. It says: <em>'We retain rights to all uploaded data to improve our models.'</em> You disconnected, but they already have your customer list.",
+                choices: [
+                    { text: "Call legal.", nextNodeId: "badEndingBreach" }
+                ]
+            },
+            "askVetting": {
+                time: "9:35 AM - Tuesday",
+                text: "The CMO looks sheepish. 'No, IT takes too long. We just wanted to move fast.' You realize this is 'Shadow AI'—critical data flowing to an unvetted third party.",
+                choices: [
+                    { text: "Pause the tool and call in experts to fix the governance process.", nextNodeId: "goodEndingGovernance" },
+                    { text: "Fire the CMO for recklessness.", nextNodeId: "badEndingChaos" }
+                ]
+            },
+            // --- ENDINGS (Must have empty choices array []) ---
+            "badEndingReputation": {
+                time: "Outcome: The Public Disaster",
+                text: "The client leaves and publicly posts about your breach of trust. Your stock dips. You chose speed over safety.<br><span class='ending-bad'>FAIL: Ignorance is not a defense. You need visibility.</span>",
+                choices: []
+            },
+            "badEndingBreach": {
+                time: "Outcome: The Third-Party Data Leak",
+                text: "You lost control of your customer database to a cheap startup with unknown security. You face compliance fines and lawsuits.<br><span class='ending-bad'>FAIL: Never connect your 'Crown Jewels' to unvetted vendors.</span>",
+                choices: []
+            },
+            "badEndingChaos": {
+                time: "Outcome: Cultural Failure",
+                text: "You fired the CMO, but the root problem remains: employees bypass security to get jobs done. The next Shadow AI tool is already being installed by someone else.<br><span class='ending-bad'>FAIL: You attacked the person, not the process gap.</span>",
+                choices: []
+            },
+            "goodEndingGovernance": {
+                time: "Outcome: The Walled Garden",
+                text: "You realized the process was broken. You brought in Pathwarden. We built a secure internal 'Walled Garden' where marketing can use powerful AI safely, without data leaving your control.<br><span class='ending-good'>SUCCESS: You turned risk into a secure advantage.</span>",
+                choices: []
+            }
+        }
+    };
+
+    // ==========================================
+    // SCENARIO 2 DATA: Vendor Risk
+    // ==========================================
+    const scenario2 = {
+        title: "Scenario 2: The 'Cheaper' Option",
+        nodes: {
+            "start": {
+                time: "1:00 PM - Wednesday",
+                text: "You need a new HR platform that uses AI to summarize candidate interviews. Vendor A is expensive but SOC 2 certified. Vendor B is 60% cheaper, has cool AI features, but is vague about where they store data.",
+                choices: [
+                    { text: "Go with Vendor B. We need to cut costs this quarter.", nextNodeId: "chooseCheap" },
+                    { text: "Demand a security review of Vendor B before signing.", nextNodeId: "demandReview" }
+                ]
+            },
+            "chooseCheap": {
+                time: "Let's fast forward 6 months...",
+                text: "Vendor B gets hacked. Because they didn't have proper encryption (which a SOC 2 audit would have caught), the personal data and interview transcripts of 5,000 applicants are leaked onto the dark web.",
+                choices: [
+                    { text: "Prepare the press release apologizing to the applicants.", nextNodeId: "badEndingVendor" }
+                ]
+            },
+            "demandReview": {
+                time: "1:30 PM - Wednesday",
+                text: "Vendor B gets defensive and refuses to share their security architecture documentation, claiming it is 'proprietary information.'",
+                choices: [
+                    { text: "Take their word for it and sign anyway. The features are too good.", nextNodeId: "chooseCheap" },
+                    { text: "Walk away. Sign with expensive Vendor A instead.", nextNodeId: "goodEndingExpensive" }
+                ]
+            },
+            // --- ENDINGS ---
+            "badEndingVendor": {
+                time: "Outcome: The Regulatory Nightmare",
+                text: "The money you saved on the license fee is dwarfed by the legal fees and GDPR/CCPA fines you now face for negligent vendor management.<br><span class='ending-bad'>FAIL: If a vendor won't prove they are secure, assume they aren't.</span>",
+                choices: []
+            },
+            "goodEndingExpensive": {
+                time: "Outcome: The Dodged Bullet",
+                text: "It cost more upfront, but six months later, news breaks that Vendor B was breached. Your data is safe with Vendor A. Security is an investment, not a cost.<br><span class='ending-good'>SUCCESS: Proper vendor risk management paid off.</span>",
+                choices: []
+            }
+        }
+    };
+
+    // ==========================================
+    // SCENARIO 3 DATA: Incident Response
+    // ==========================================
+    const scenario3 = {
+        title: "Scenario 3: The Ransom Note",
+        nodes: {
+            "start": {
+                time: "3:00 AM - Saturday",
+                text: "Your phone buzzes. It's your CISO. 'We have a situation. A threat actor claims they used AI to find a vulnerability in our legacy code and have encrypted our main production servers. They want $5M in Bitcoin.'",
+                choices: [
+                    { text: "Panic. Ask the CISO: 'Do we have an incident response plan for this?'", nextNodeId: "askPlan" },
+                    { text: "Tell the CISO: 'Pay them immediately. We can't be offline.'", nextNodeId: "payRansom" }
+                ]
+            },
+            "askPlan": {
+                time: "3:05 AM - Saturday",
+                text: "The CISO hesitates. 'We have a generic plan from 2019... but nothing specific for an AI-accelerated attack or sophisticated ransomware.'",
+                choices: [
+                    { text: "Try to restore from backups immediately.", nextNodeId: "tryBackups" }
+                ]
+            },
+            "payRansom": {
+                time: "Outcome: Funding Terrorism",
+                text: "You pay the $5M. They send a decryption key that only half-works. You are still offline, out $5M, and you just put a target on your back as a company that pays easily.<br><span class='ending-bad'>FAIL: Never pay without a strategy. You need professional negotiators and a vCISO.</span>",
+                choices: []
+            },
+            "tryBackups": {
+                time: "4:30 AM - Saturday",
+                text: "The backups fail. The attackers used AI agents to locate and corrupt your backups *before* launching the main encryption attack. You are completely locked out.",
+                choices: [
+                    { text: "Accept total defeat.", nextNodeId: "badEndingTotalLoss" }
+                ]
+            },
+             // --- ENDINGS ---
+            "badEndingTotalLoss": {
+                time: "Outcome: Catastrophic Failure",
+                text: "Your business is offline for 3 weeks while you rebuild from scratch. The financial and reputational damage is nearly unrecoverable. <br><span class='ending-bad'>FAIL: Modern threats require modern, tested Incident Response plans.</span>",
+                choices: []
+            }
+        }
+    };
+
+
+    // ==========================================
+    // GAME ENGINE CONFIGURATION
+    // ==========================================
+    
+    // Array holding all scenario objects
+    const scenarios = [scenario1, scenario2, scenario3];
+    // State variable to track current scenario index (starts at 0)
+    let currentScenarioIndex = 0;
+
+    const storyTextDiv = document.getElementById('story-text');
+    const choicesDiv = document.getElementById('choices-container');
+    const timeStampDiv = document.getElementById('timeStamp');
+    const scenarioTitleDiv = document.getElementById('scenario-title');
+
+    // Main function to render a specific node from the CURRENT scenario
+    function renderScene(nodeId) {
+        // Get data for the currently active scenario
+        const currentScenarioData = scenarios[currentScenarioIndex];
+        const node = currentScenarioData.nodes[nodeId];
+        
+        // Update UI elements
+        scenarioTitleDiv.innerText = currentScenarioData.title;
+        storyTextDiv.innerHTML = node.text;
+        timeStampDiv.innerText = node.time;
+        
+        // Clear previous choices/buttons
+        choicesDiv.innerHTML = '';
+
+        // Logic: Check if it's a choice node or an ending node
+        if (node.choices.length > 0) {
+            // It's a normal node, render choice buttons
+            node.choices.forEach(choice => {
+                const button = document.createElement('button');
+                button.innerText = choice.text;
+                button.classList.add('choice-btn');
+                button.addEventListener('click', () => renderScene(choice.nextNodeId));
+                choicesDiv.appendChild(button);
+            });
+        } else {
+            // It's an ending node (no choices). Render Restart Button + CTA.
+            
+            // 1. Create the Restart Button
+            const restartBtn = document.createElement('button');
+            restartBtn.innerText = "Load Next Scenario ↻";
+            restartBtn.classList.add('restart-btn');
+            
+            // 2. Add click handler to cycle to next scenario
+            restartBtn.addEventListener('click', () => {
+                // Increment index, loop back to 0 if at the end
+                currentScenarioIndex = (currentScenarioIndex + 1) % scenarios.length;
+                // Restart the engine with the 'start' node of the new scenario
+                renderScene('start');
+            });
+            choicesDiv.appendChild(restartBtn);
+
+            // 3. Add the static CTA below the button
+            const cta = document.createElement('div');
+            cta.classList.add('cta-container');
+            cta.innerHTML = "<p>These crises happen daily. Are you ready? <br><a href='https://pathwarden.com' target='_blank' class='ending-link'>Book a Pathwarden Assessment.</a></p>";
+            choicesDiv.appendChild(cta);
+        }
+    }
+
+    // Start the game initially with the first scenario's start node
+    renderScene('start');
+
+</script>
+
+</body>
+</html>
