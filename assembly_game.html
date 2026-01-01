@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pathwarden - Secure Assembly Line v4</title>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --panel-color: #16213e;
+            --text-color: #e0e0e0;
+            --accent-cyan: #4db8ff;
+            --safe-green: #2ecc71;
+            --risky-red: #e74c3c;
+            --slot-border: #2c3e50;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        h1 { margin-bottom: 5px; text-align: center; }
+        #scenario-counter { color: #888; font-size: 0.9rem; margin-bottom: 10px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase;}
+        p.subtitle { color: var(--accent-cyan); margin-bottom: 30px; text-align: center; max-width: 600px; min-height: 1.2em;}
+
+        .game-container {
+            background-color: var(--panel-color);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            border: 1px solid #0f3460;
+        }
+
+        /* --- The Assembly Line --- */
+        .assembly-line-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            overflow-x: auto;
+        }
+
+        .endpoint {
+            background-color: #0f3460;
+            border: 2px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            text-align: center;
+            width: 130px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 70px;
+        }
+        
+        .endpoint-label { font-size: 0.8rem; color: #888; margin-bottom: 5px; display: block;}
+        .endpoint-text { font-size: 1rem; word-wrap: break-word;}
+
+        .connector-arrow {
+            font-size: 2rem;
+            color: var(--accent-cyan);
+            margin: 0 10px;
+        }
+
+        .drop-slot {
+            width: 130px;
+            height: 90px;
+            border: 3px dashed var(--slot-border);
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(255,255,255,0.05);
+            color: #666;
+            font-style: italic;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+            text-align: center;
+            padding: 5px;
+            font-size: 0.9rem;
+        }
+
+        .drop-slot.drag-over {
+            border-color: var(--accent-cyan);
+            background-color: rgba(77, 184, 255, 0.1);
+        }
+
+        /* STATES WHEN DROPPED IN SLOT */
+        .slot-filled-safe {
+            background-color: var(--safe-green) !important;
+            color: #1a1a2e !important;
+            border: none !important;
+            font-style: normal !important;
+            font-weight: bold;
+        }
+        .slot-filled-risky {
+            background-color: var(--risky-red) !important;
+            color: white !important;
+            border: none !important;
+            font-style: normal !important;
+            font-weight: bold;
+        }
+
+        /* --- The Module Palette --- */
+        .palette-container {
+            border-top: 2px solid #2c3e50;
+            padding-top: 20px;
+        }
+        h3 { margin-top: 0; color: #888; font-size: 1rem; text-align: center; margin-bottom: 15px;}
+
+        .modules-grid {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            min-height: 100px;
+        }
+
+        .draggable-module {
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: grab;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+            background-color: var(--panel-color);
+            font-size: 0.9rem;
+            max-width: 150px;
+            text-align: center;
+        }
+        
+        .draggable-module:active { cursor: grabbing; transform: scale(0.98); }
+
+        /* UPDATED CSS: Neutral outlines in palette */
+        .mod-safe, .mod-risky { border: 2px solid #e0e0e0; color: #e0e0e0; }
+
+
+        /* --- Modals --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 100;
+            display: none; justify-content: center; align-items: center;
+            padding: 20px;
+        }
+        .modal-content {
+            background: var(--panel-color); padding: 30px; border-radius: 12px;
+            text-align: center; max-width: 450px; width: 100%; border: 1px solid #333;
+            animation: popIn 0.3s ease;
+        }
+        @keyframes popIn { from {transform: scale(0.8); opacity:0;} to {transform: scale(1); opacity:1;}}
+
+        .result-icon { font-size: 4rem; margin-bottom: 10px; display: block; }
+        .win-title { color: var(--safe-green); margin: 10px 0; }
+        .lose-title { color: var(--risky-red); margin: 10px 0; }
+        .final-score-title { color: var(--accent-cyan); margin: 10px 0; font-size: 2rem;}
+        
+        .reset-btn {
+            margin-top: 20px; padding: 12px 24px; background: var(--accent-cyan);
+            border: none; border-radius: 5px; color: var(--bg-color); font-weight: bold; cursor: pointer;
+            font-size: 1rem; transition: background 0.2s; width: 100%;
+        }
+        .reset-btn:hover { background: #3a9bd8; }
+        .cta-link { color: var(--accent-cyan); text-decoration: none; font-weight: bold; display: block; margin-top: 20px; font-size: 0.9rem;}
+        .modal-text { line-height: 1.5; color: #ccc;}
+
+        @media (max-width: 650px) {
+            .assembly-line-container { flex-direction: column; gap: 10px;}
+            .connector-arrow { transform: rotate(90deg); margin: 5px 0; }
+            .endpoint, .drop-slot { width: 90%; min-height: auto; padding: 10px;}
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="scenario-counter">Workflow 1 of 3</div>
+    <h1 id="game-title">Loading...</h1>
+    <p class="subtitle" id="game-subtitle">Loading...</p>
+
+    <div class="game-container">
+        
+        <div class="assembly-line-container">
+            <div class="endpoint">
+                <span class="endpoint-label">START INPUT</span>
+                <span class="endpoint-text" id="start-text">...</span>
+            </div>
+            <div class="connector-arrow">→</div>
+            
+            <div class="drop-slot" id="slot1" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
+                Drop Step 1
+            </div>
+            
+            <div class="connector-arrow">→</div>
+
+            <div class="drop-slot" id="slot2" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
+                Drop Step 2
+            </div>
+
+            <div class="connector-arrow">→</div>
+            <div class="endpoint" style="border-color: var(--safe-green); color: var(--safe-green);">
+                <span class="endpoint-label" style="color: var(--safe-green); opacity: 0.7;">GOAL OUTPUT</span>
+                <span class="endpoint-text" id="end-text">...</span>
+            </div>
+        </div>
+
+
+        <div class="palette-container">
+            <h3 id="palette-label">Available Modules for this Workflow:</h3>
+            <div class="modules-grid" id="modules-grid"></div>
+        </div>
+
+    </div>
+
+    <div class="modal-overlay" id="resultModal">
+        <div class="modal-content" id="modalContent">
+            </div>
+    </div>
+
+
+    <script>
+        // ================= GAME DATA =================
+        const scenarios = [
+            {
+                title: "The Slack Report (Basic)",
+                subtitle: "Objective: Summarize sensitive customer support tickets for a weekly Slack report.",
+                start: "Raw Support Tickets (PII)",
+                end: "Clean Slack Summary",
+                modules: [
+                    { name: "Anonymizer Bot", type: "safe" },
+                    { name: "Private Enterprise LLM", type: "safe" },
+                    { name: "Public ChatGPT (Free)", type: "risky" },
+                    { name: "Hardcoded API Keys", type: "risky" }
+                ]
+            },
+            {
+                title: "The Marketing Campaign (Intermediate)",
+                subtitle: "Objective: Generate personalized email copy based on purchase history without exposing identities.",
+                start: "User Purchase DB",
+                end: "Personalized Email Drafts",
+                modules: [
+                    { name: "Data Tokenization Service", type: "safe" }, 
+                    { name: "Self-Hosted Model", type: "safe" },
+                    { name: "Basic MD5 Hashing", type: "risky" }, 
+                    { name: "3rd Party Vendor API", type: "risky" } 
+                ]
+            },
+            {
+                title: "The Code Fix (Advanced)",
+                subtitle: "Objective: Use AI to debug proprietary software code without leaking IP.",
+                start: "Proprietary Source Code (IP)",
+                end: "Fixed Git Commit",
+                modules: [
+                    { name: "Local LLM (Offline)", type: "safe" },
+                    { name: "Human Code Review Step", type: "safe" },
+                    { name: "Browser Extension AI", type: "risky" }, 
+                    { name: "Pastebin Staging", type: "risky" } 
+                ]
+            }
+        ];
+
+        let currentScenarioIndex = 0;
+        let totalScore = 0;
+        let slot1State = null; 
+        let slot2State = null;
+        const modulesGrid = document.getElementById('modules-grid');
+        const resultModal = document.getElementById('resultModal');
+        const modalContent = document.getElementById('modalContent');
+
+        // ================= INIT & SCENARIO LOADING =================
+        
+        function loadScenario() {
+            const data = scenarios[currentScenarioIndex];
+            
+            document.getElementById('scenario-counter').innerText = `WORKFLOW ${currentScenarioIndex + 1} OF ${scenarios.length}`;
+            document.getElementById('game-title').innerText = data.title;
+            document.getElementById('game-subtitle').innerText = data.subtitle;
+            document.getElementById('start-text').innerText = data.start;
+            document.getElementById('end-text').innerText = data.end;
+
+            slot1State = null;
+            slot2State = null;
+            resultModal.style.display = 'none';
+            
+            const slots = document.querySelectorAll('.drop-slot');
+            slots.forEach((slot, index) => {
+                slot.className = 'drop-slot';
+                slot.innerText = `Drop Step ${index + 1}`;
+            });
+
+            renderPalette(data.modules);
+        }
+
+        function renderPalette(modulesList) {
+            modulesGrid.innerHTML = ''; 
+            modulesList.forEach((mod, index) => {
+                const el = document.createElement('div');
+                // Note: We still use mod-safe/mod-risky classes for data tracking, 
+                // but CSS now makes them look neutral initially.
+                el.className = `draggable-module mod-${mod.type}`;
+                el.setAttribute('draggable', 'true');
+                el.addEventListener('dragstart', drag);
+                el.dataset.type = mod.type;
+                el.dataset.name = mod.name;
+                el.innerText = mod.name;
+                modulesGrid.appendChild(el);
+            });
+        }
+
+        // Load first scenario
+        loadScenario();
+
+
+        // ================= DRAG & DROP LOGIC =================
+
+        function allowDrop(ev) { ev.preventDefault(); }
+
+        function drag(ev) {
+            ev.dataTransfer.setData("type", ev.target.dataset.type);
+            ev.dataTransfer.setData("name", ev.target.dataset.name);
+        }
+
+        function dragEnter(ev) { ev.target.classList.add('drag-over'); }
+        function dragLeave(ev) { ev.target.classList.remove('drag-over'); }
+
+        function drop(ev) {
+            ev.preventDefault();
+            const targetSlot = ev.target;
+            targetSlot.classList.remove('drag-over');
+
+            if (!targetSlot.classList.contains('drop-slot')) return;
+
+            const moduleName = ev.dataTransfer.getData("name");
+            const moduleType = ev.dataTransfer.getData("type");
+
+            targetSlot.innerText = moduleName;
+            targetSlot.className = 'drop-slot'; 
+            
+            // COLOR CHANGE HAPPENS HERE UPON DROP
+            if (moduleType === 'safe') {
+                targetSlot.classList.add('slot-filled-safe'); // Turns Green
+            } else {
+                targetSlot.classList.add('slot-filled-risky'); // Turns Red
+            }
+
+            if (targetSlot.id === 'slot1') slot1State = moduleType;
+            if (targetSlot.id === 'slot2') slot2State = moduleType;
+
+            checkGameState();
+        }
+
+        // ================= GAME STATE & RESULTS =================
+
+        function checkGameState() {
+            if (slot1State !== null && slot2State !== null) {
+                setTimeout(() => {
+                    showRoundResult();
+                }, 300);
+            }
+        }
+
+        function showRoundResult() {
+            let isWin = false;
+            if (slot1State === 'risky' || slot2State === 'risky') {
+                // LOSS
+                 modalContent.innerHTML = `
+                    <span class="result-icon">🚨</span>
+                    <h2 class="lose-title">WORKFLOW FAILED!</h2>
+                    <p class="modal-text">You introduced a risky component. Data has escaped your environment.</p>
+                    <button class="reset-btn" onclick="nextScenario()">Continue ➔</button>
+                `;
+            } else {
+                // WIN
+                isWin = true;
+                totalScore++;
+                 modalContent.innerHTML = `
+                    <span class="result-icon">🛡️</span>
+                    <h2 class="win-title">WORKFLOW SECURE!</h2>
+                    <p class="modal-text">Excellent architecture. The goal was achieved without exposing data.</p>
+                    <button class="reset-btn" onclick="nextScenario()">Continue ➔</button>
+                `;
+            }
+            resultModal.style.display = 'flex';
+        }
+
+        function nextScenario() {
+            if (currentScenarioIndex + 1 >= scenarios.length) {
+                showFinalEndScreen();
+            } else {
+                currentScenarioIndex++;
+                loadScenario();
+            }
+        }
+
+        function showFinalEndScreen() {
+            let finalMessage = "";
+            if (totalScore === 3) {
+                finalMessage = "Perfect score! You are ready to be a Pathwarden architect.";
+            } else if (totalScore > 0) {
+                finalMessage = "Not bad, but a few risky choices slipped through. Security requires 100% consistency.";
+            } else {
+                finalMessage = "Your workflows are leaking data everywhere. You need urgent help.";
+            }
+
+             modalContent.innerHTML = `
+                <span class="result-icon">🏁</span>
+                <h2 class="final-score-title">Final Score: ${totalScore} / 3</h2>
+                <p class="modal-text">${finalMessage}</p>
+                <a href="https://pathwarden.com" target="_blank" class="cta-link">Don't play games with real data. Book a consultation.</a>
+                <button class="reset-btn" style="background-color: #555;" onclick="restartGame()">Restart Game ↻</button>
+            `;
+            resultModal.style.display = 'flex';
+        }
+
+        function restartGame() {
+            currentScenarioIndex = 0;
+            totalScore = 0;
+            loadScenario();
+        }
+    </script>
+
+</body>
+</html>
