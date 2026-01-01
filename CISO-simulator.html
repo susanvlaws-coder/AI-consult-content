@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pathwarden | CISO Simulator</title>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --panel-color: #16213e;
+            --text-color: #e0e0e0;
+            --accent-cyan: #4db8ff;
+            --safe-green: #2ecc71;
+            --risky-red: #e74c3c;
+            --border-color: #2c3e50;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* BRANDING HEADERS */
+        .brand-logo {
+            color: var(--accent-cyan);
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+            text-shadow: 0 0 10px rgba(77, 184, 255, 0.5);
+            text-transform: uppercase;
+        }
+
+        h1 { margin: 5px 0 10px 0; text-align: center; letter-spacing: 1px; font-size: 1.8rem;}
+        p.subtitle { color: var(--accent-cyan); margin-bottom: 25px; text-align: center; max-width: 600px; opacity: 0.9;}
+
+        .game-container {
+            background-color: var(--panel-color);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+            max-width: 800px;
+            width: 100%;
+            border: 1px solid #0f3460;
+        }
+
+        /* --- Dashboard --- */
+        .dashboard {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border: 1px solid var(--border-color);
+        }
+        .stat-box {
+            text-align: center;
+        }
+        .stat-label {
+            display: block;
+            font-size: 0.9rem;
+            color: #888;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+        #risk-val { color: var(--risky-red); transition: color 0.3s ease;}
+
+        /* --- Scenario Area --- */
+        .scenario-box {
+            margin-bottom: 30px;
+            min-height: 100px;
+        }
+        .scenario-title {
+            font-size: 1.4rem; color: white; margin-bottom: 15px;
+        }
+        .scenario-text {
+            font-size: 1.1rem; line-height: 1.6; color: #ccc;
+        }
+
+        /* --- Choices --- */
+        .choices-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+        .choice-card {
+            background: rgba(255,255,255,0.05);
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .choice-card:hover {
+            border-color: var(--accent-cyan);
+            background: rgba(77, 184, 255, 0.1);
+            transform: translateY(-3px);
+            box-shadow: 0 0 15px rgba(77, 184, 255, 0.2);
+        }
+        .choice-card.disabled {
+            opacity: 0.5; cursor: not-allowed; border-color: #333;
+        }
+        .choice-title { font-weight: bold; margin-bottom: 10px; font-size: 1.1rem;}
+        .choice-desc { font-size: 0.9rem; color: #aaa; margin-bottom: 15px; flex-grow: 1;}
+        .choice-cost { 
+            font-weight: bold; color: var(--accent-cyan); padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* --- Modals --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 100;
+            display: none; justify-content: center; align-items: center;
+            padding: 20px;
+        }
+        .modal-content {
+            background: var(--panel-color); padding: 40px; border-radius: 12px;
+            text-align: center; max-width: 500px; width: 100%; border: 1px solid var(--accent-cyan);
+            animation: popIn 0.3s ease;
+            box-sizing: border-box;
+        }
+        @keyframes popIn { from {transform: scale(0.8); opacity:0;} to {transform: scale(1); opacity:1;}}
+
+        .outcome-title { font-size: 1.5rem; margin-bottom: 20px; color: white;}
+        .outcome-text { font-size: 1.1rem; line-height: 1.5; margin-bottom: 30px; color: #ccc;}
+        .stat-change { font-weight: bold; }
+        .risk-down { color: var(--safe-green); }
+        .risk-up { color: var(--risky-red); }
+
+        .next-btn {
+            padding: 15px 30px; background: var(--accent-cyan);
+            border: none; border-radius: 5px; color: var(--bg-color); font-weight: bold; cursor: pointer;
+            font-size: 1.1rem; transition: background 0.2s; width: 100%; box-sizing: border-box;
+        }
+        .next-btn:hover { background: #3a9bd8; box-shadow: 0 0 15px rgba(77, 184, 255, 0.4);}
+        
+        .final-cta-btn {
+             background-color: var(--accent-cyan); color: var(--bg-color); text-decoration: none; font-weight: bold;
+             padding: 15px 30px; border-radius: 5px; display: inline-block; margin-top: 20px; font-size: 1.1rem; transition: background 0.2s;
+        }
+        .final-cta-btn:hover { background: #3a9bd8; box-shadow: 0 0 15px rgba(77, 184, 255, 0.4);}
+
+        .footer { margin-top: 40px; font-size: 0.8rem; color: #666; text-align: center;}
+
+    </style>
+</head>
+<body>
+
+    <div class="brand-logo">PATHWARDEN</div>
+    <h1>The CISO Simulator</h1>
+    <p class="subtitle">Objective: Navigate 4 quarters. Lower your Risk Score without bankrupting the company. Strategy beats spending.</p>
+
+    <div class="game-container">
+        
+        <div class="dashboard">
+            <div class="stat-box">
+                <span class="stat-label">Quarter</span>
+                <span class="stat-value" id="qtr-val">1 / 4</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-label">Remaining Budget</span>
+                <span class="stat-value" id="budget-val">$150k</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-label">Current Risk Score</span>
+                <span class="stat-value" id="risk-val">80</span>
+            </div>
+        </div>
+
+        <div class="scenario-box">
+            <div class="scenario-title" id="sce-title">Loading...</div>
+            <div class="scenario-text" id="sce-text">Loading...</div>
+        </div>
+
+        <div class="choices-container" id="choices-area">
+            </div>
+
+    </div>
+
+    <div class="footer">
+        © Pathwarden. Secure by Design.
+    </div>
+
+    <div class="modal-overlay" id="resultModal">
+        <div class="modal-content" id="modalContent">
+            </div>
+    </div>
+
+
+    <script>
+        // ================= GAME STATE =================
+        let state = {
+            quarter: 1,
+            budget: 150, // Represented in thousands (k)
+            risk: 80 // 0-100 scale
+        };
+
+        const totalQuarters = 4;
+
+        // ================= SCENARIO DATA =================
+        const quartersData = [
+             // --- QUARTER 1 ---
+            {
+                title: "Q1: The Foundation",
+                text: "You just closed your Series A funding. The board demands you improve security immediately before scaling. What's your first major investment?",
+                choices: [
+                    {
+                        title: "Buy 'Next-Gen' Firewall",
+                        desc: "Expensive hardware promising to block all threats at the perimeter.",
+                        cost: 50,
+                        riskChange: -5,
+                        outcomeTitle: "False Sense of Security",
+                        outcomeText: "The firewall is installed, but it's misconfigured because you lack staff. Attackers just bypass it via phishing emails anyway. <br><br><span class='stat-change risk-down'>Risk: -5</span>"
+                    },
+                    {
+                        title: "Hire Junior IT Analyst",
+                        desc: "Bring someone in-house to handle alerts and manage basic tools.",
+                        cost: 40,
+                        riskChange: -10,
+                        outcomeTitle: "Overwhelmed",
+                        outcomeText: "They are bright, but lack experience. They are drowning in alerts and can't focus on strategy. Better than nothing. <br><br><span class='stat-change risk-down'>Risk: -10</span>"
+                    },
+                    {
+                        title: "Retain Fractional CISO (Pathwarden)",
+                        desc: "Hire strategic leadership part-time to build a roadmap and policy.",
+                        cost: 25,
+                        riskChange: -25,
+                        outcomeTitle: "Strategic Roadmap Built",
+                        outcomeText: "The vCISO immediately identified key gaps and implemented mandatory MFA, cutting off the easiest attack vectors cost-effectively. <br><br><span class='stat-change risk-down'>Risk: -25</span>"
+                    }
+                ]
+            },
+             // --- QUARTER 2 ---
+            {
+                title: "Q2: The Vendor Request",
+                text: "Marketing wants to connect a new, unproven AI tool to your entire customer database to boost sales. It's fast, but is it safe?",
+                choices: [
+                    {
+                        title: "Buy Encryption Software",
+                        desc: "Purchase a tool to encrypt the database before connecting.",
+                        cost: 30,
+                        riskChange: -10,
+                        outcomeTitle: "Expensive Band-Aid",
+                        outcomeText: "The data is encrypted at rest, but the AI tool decrypts it to use it. The vendor still has access. <br><br><span class='stat-change risk-down'>Risk: -10</span>"
+                    },
+                    {
+                        title: "Let Marketing proceed (Speed!)",
+                        desc: "Don't slow them down. Hope the vendor is secure.",
+                        cost: 0,
+                        riskChange: +20,
+                        outcomeTitle: "Shadow AI Growth",
+                        outcomeText: "Marketing moves fast, but you have zero visibility into where customer data is going. You just increased your attack surface massively. <br><br><span class='stat-change risk-up'>Risk: +20</span>"
+                    },
+                    {
+                        title: "vCISO Vendor Audit",
+                        desc: "Have your fractional CISO vet the vendor's security controls first.",
+                        cost: 15,
+                        riskChange: -20,
+                        outcomeTitle: "Risk Avoided",
+                        outcomeText: "The vCISO found the vendor had poor security. You blocked the integration and found a secure alternative, preventing a future breach. <br><br><span class='stat-change risk-down'>Risk: -20</span>"
+                    }
+                ]
+            },
+            // --- QUARTER 3 ---
+            {
+                title: "Q3: The Big Deal",
+                text: "A massive enterprise client wants to sign, but they require a SOC 2 Type II report before they close the deal. You don't have one.",
+                choices: [
+                    {
+                        title: "Buy 'SOC 2 in a Box' Software",
+                        desc: "An automated platform promising quick compliance.",
+                        cost: 40,
+                        riskChange: -15,
+                        outcomeTitle: "Checkbox Compliance",
+                        outcomeText: "You got the paperwork, but your actual processes haven't changed much. You are compliant on paper, but not actually secure. <br><br><span class='stat-change risk-down'>Risk: -15</span>"
+                    },
+                    {
+                        title: "Have Engineering figure it out",
+                        desc: "Pull devs off product work to write security policies.",
+                        cost: 0, 
+                        riskChange: +10,
+                        outcomeTitle: "Product Delayed & Bad Policy",
+                        outcomeText: "Your engineers hate you. Product roadmap is delayed 3 months. The policies they wrote are unusable. <br><br><span class='stat-change risk-up'>Risk: +10 (due to chaos)</span>"
+                    },
+                    {
+                        title: "vCISO Readiness Leadership",
+                        desc: "Have the vCISO manage the audit process and implement real controls.",
+                        cost: 20,
+                        riskChange: -30,
+                        outcomeTitle: "Deal Signed & Secure",
+                        outcomeText: "The vCISO guided the team efficiently. You passed the audit with real security improvements, and the client signed the contract. <br><br><span class='stat-change risk-down'>Risk: -30</span>"
+                    }
+                ]
+            },
+             // --- QUARTER 4 ---
+             {
+                title: "Q4: The Zero-Day Scare",
+                text: "News breaks of a major vulnerability in a software library you use. Hackers are actively exploiting it globally.",
+                choices: [
+                    {
+                        title: "Buy Threat Intel Feed",
+                        desc: "Subscribe to a premium feed to get more data on the attack.",
+                        cost: 20,
+                        riskChange: -5,
+                        outcomeTitle: "Information Overload",
+                        outcomeText: "You have lots of data about the attack, but still no one available to actually patch your systems. <br><br><span class='stat-change risk-down'>Risk: -5</span>"
+                    },
+                    {
+                        title: "Emergency Patch Weekend",
+                        desc: "Pay overtime for the team to work all weekend patching blindly.",
+                        cost: 10,
+                        riskChange: -15,
+                        outcomeTitle: "Burnout & Broken Code",
+                        outcomeText: "You patched the vulnerability, but the rushed deployment broke your checkout page for 12 hours on Sunday. The team is exhausted. <br><br><span class='stat-change risk-down'>Risk: -15</span>"
+                    },
+                    {
+                        title: "vCISO Coordinated Response",
+                        desc: "vCISO leads a structured incident response plan.",
+                        cost: 10,
+                        riskChange: -35,
+                        outcomeTitle: "Crisis Averted Calmly",
+                        outcomeText: "Because the vCISO had an Incident Response plan ready (from Q1), the team knew exactly what to do. Patched calmly with no downtime. <br><br><span class='stat-change risk-down'>Risk: -35</span>"
+                    }
+                ]
+            }
+        ];
+
+        // ================= UI & LOGIC FUNCTIONS =================
+
+        const qtrValUI = document.getElementById('qtr-val');
+        const budgetValUI = document.getElementById('budget-val');
+        const riskValUI = document.getElementById('risk-val');
+        const sceTitleUI = document.getElementById('sce-title');
+        const sceTextUI = document.getElementById('sce-text');
+        const choicesAreaUI = document.getElementById('choices-area');
+        const resultModalUI = document.getElementById('resultModal');
+        const modalContentUI = document.getElementById('modalContent');
+
+        function updateDashboard() {
+            qtrValUI.innerText = `${state.quarter} / ${totalQuarters}`;
+            budgetValUI.innerText = `$${state.budget}k`;
+            riskValUI.innerText = state.risk;
+            
+            // Color code risk score
+            if(state.risk > 70) riskValUI.style.color = 'var(--risky-red)';
+            else if(state.risk > 40) riskValUI.style.color = 'yellow';
+            else riskValUI.style.color = 'var(--safe-green)';
+        }
+
+        function renderQuarter() {
+            updateDashboard();
+            
+            // Check for end game condition BEFORE rendering scenario
+            if(state.quarter > totalQuarters) {
+                showEndGame();
+                return;
+            }
+
+            const data = quartersData[state.quarter - 1];
+            sceTitleUI.innerText = data.title;
+            sceTextUI.innerText = data.text;
+            choicesAreaUI.innerHTML = '';
+
+            data.choices.forEach((choice, index) => {
+                const card = document.createElement('div');
+                card.className = 'choice-card';
+                // Check affordability
+                if(state.budget < choice.cost) {
+                    card.classList.add('disabled');
+                } else {
+                    card.onclick = () => makeChoice(index);
+                }
+
+                card.innerHTML = `
+                    <div>
+                        <div class="choice-title">${choice.title}</div>
+                        <div class="choice-desc">${choice.desc}</div>
+                    </div>
+                    <div class="choice-cost">Cost: $${choice.cost}k</div>
+                `;
+                choicesAreaUI.appendChild(card);
+            });
+        }
+
+        function makeChoice(choiceIndex) {
+            const data = quartersData[state.quarter - 1];
+            const choice = data.choices[choiceIndex];
+
+            // Apply results
+            state.budget -= choice.cost;
+            state.risk += choice.riskChange;
+            // Clamp risk between 0 and 100
+            state.risk = Math.max(0, Math.min(100, state.risk));
+
+            // Show Outcome Modal
+            modalContentUI.innerHTML = `
+                <h2 class="outcome-title">${choice.outcomeTitle}</h2>
+                <p class="outcome-text">${choice.outcomeText}</p>
+                <button class="next-btn" onclick="nextQuarter()">Next Quarter ➔</button>
+            `;
+            resultModalUI.style.display = 'flex';
+        }
+
+        function nextQuarter() {
+            state.quarter++;
+            resultModalUI.style.display = 'none';
+            renderQuarter();
+        }
+
+        function showEndGame() {
+            sceTitleUI.innerText = "Simulation Complete";
+            sceTextUI.innerText = "Review your final standing below.";
+            choicesAreaUI.innerHTML = ''; // Hide choices
+
+            let finalMessage = "";
+            let finalTitle = "";
+            
+            if (state.risk <= 30 && state.budget > 0) {
+                finalTitle = "Managed Growth (Success)";
+                finalMessage = "You successfully navigated the risks of scaling. By investing in strategy (vCISO) over expensive tools, you kept risk low and budget intact.";
+            } else if (state.risk > 70) {
+                finalTitle = "High Risk Exposure (Failure)";
+                finalMessage = "Your company is dangerously exposed. You either spent budget on the wrong things or ignored risks in favor of speed. A breach is imminent.";
+            } else if (state.budget <= 20) {
+                 finalTitle = "Budget Burnout (Mixed Result)";
+                 finalMessage = "You lowered risk somewhat, but you burned through almost all your cash buying expensive tools instead of efficient strategy.";
+            } else {
+                 finalTitle = "Average Performance";
+                 finalMessage = "You survived, but missed opportunities to efficiently lower risk. Security is still a blocker, not an enabler.";
+            }
+
+            modalContentUI.innerHTML = `
+                <h2 class="outcome-title" style="color:var(--accent-cyan)">${finalTitle}</h2>
+                <div style="margin: 20px 0; font-size: 1.2rem;">
+                    <div>Final Risk: <span style="${state.risk < 40 ? 'color:var(--safe-green)' : 'color:var(--risky-red)'}">${state.risk}</span></div>
+                    <div>Remaining Budget: $${state.budget}k</div>
+                </div>
+                <p class="outcome-text">${finalMessage}</p>
+                <p style="color:#888; font-size:0.9rem;">Don't play games with your real budget.</p>
+                <a href="https://pathwarden.com" target="_blank" class="final-cta-btn">Hire a Pathwarden vCISO</a>
+                <button class="next-btn" style="background:#333; margin-top:15px;" onclick="restartGame()">Restart Sim ↻</button>
+            `;
+            resultModalUI.style.display = 'flex';
+        }
+
+        function restartGame() {
+            state = { quarter: 1, budget: 150, risk: 80 };
+            resultModalUI.style.display = 'none';
+            renderQuarter();
+        }
+
+        // Start Game
+        renderQuarter();
+
+    </script>
+</body>
+</html>
